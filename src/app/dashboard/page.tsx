@@ -221,30 +221,79 @@ export default function DashboardPage() {
     }
   }
 
-  async function handleDragEnd(result: DropResult, listId: string) {
+  async function handleDragEnd(result: DropResult) {
     if (!result.destination) return;
 
-    const tasks = listId === "today" ? todayTasks : tomorrowTasks;
-    const setTasks = listId === "today" ? setTodayTasks : setTomorrowTasks;
+    const sourceList = result.source.droppableId;
+    const destList = result.destination.droppableId;
 
-    // Only reorder incomplete tasks
-    const incomplete = tasks.filter((t) => !t.is_completed);
-    const completed = tasks.filter((t) => t.is_completed);
+    const sourceTasks = sourceList === "today-tasks" ? todayTasks : tomorrowTasks;
+    const destTasks = destList === "today-tasks" ? todayTasks : tomorrowTasks;
+    const setSourceTasks = sourceList === "today-tasks" ? setTodayTasks : setTomorrowTasks;
+    const setDestTasks = destList === "today-tasks" ? setTodayTasks : setTomorrowTasks;
+    const destDate = destList === "today-tasks" ? today : tomorrow;
 
-    const reordered = [...incomplete];
-    const [moved] = reordered.splice(result.source.index, 1);
-    reordered.splice(result.destination.index, 0, moved);
+    const sourceIncomplete = sourceTasks.filter((t) => !t.is_completed);
+    const sourceCompleted = sourceTasks.filter((t) => t.is_completed);
 
-    // Assign new priorities
-    const updated = reordered.map((t, i) => ({ ...t, priority: i + 1 }));
-    setTasks([...updated, ...completed]);
+    if (sourceList === destList) {
+      // Same-list reorder
+      const reordered = [...sourceIncomplete];
+      const [moved] = reordered.splice(result.source.index, 1);
+      reordered.splice(result.destination.index, 0, moved);
 
-    // Persist
-    await fetch("/api/tasks/reorder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderedIds: updated.map((t) => t.id) }),
-    });
+      const updated = reordered.map((t, i) => ({ ...t, priority: i + 1 }));
+      setSourceTasks([...updated, ...sourceCompleted]);
+
+      await fetch("/api/tasks/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderedIds: updated.map((t) => t.id) }),
+      });
+    } else {
+      // Cross-list move
+      const destIncomplete = destTasks.filter((t) => !t.is_completed);
+      const destCompleted = destTasks.filter((t) => t.is_completed);
+
+      if (destIncomplete.length >= 6) {
+        alert("That list already has 6 tasks.");
+        return;
+      }
+
+      // Remove from source
+      const newSource = [...sourceIncomplete];
+      const [moved] = newSource.splice(result.source.index, 1);
+
+      // Insert into destination
+      const newDest = [...destIncomplete];
+      newDest.splice(result.destination.index, 0, { ...moved, target_date: destDate });
+
+      // Re-prioritize both lists
+      const updatedSource = newSource.map((t, i) => ({ ...t, priority: i + 1 }));
+      const updatedDest = newDest.map((t, i) => ({ ...t, priority: i + 1 }));
+
+      setSourceTasks([...updatedSource, ...sourceCompleted]);
+      setDestTasks([...updatedDest, ...destCompleted]);
+
+      // Persist: move task to new date, then reorder both lists
+      await Promise.all([
+        fetch(`/api/tasks/${moved.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target_date: destDate }),
+        }),
+        fetch("/api/tasks/reorder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderedIds: updatedSource.map((t) => t.id) }),
+        }),
+        fetch("/api/tasks/reorder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderedIds: updatedDest.map((t) => t.id) }),
+        }),
+      ]);
+    }
   }
 
   if (loading) {
@@ -280,6 +329,7 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-6 py-8">
+       <DragDropContext onDragEnd={handleDragEnd}>
         {/* Today Section */}
         <section>
           <div className="flex items-baseline justify-between mb-4">
@@ -299,9 +349,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <DragDropContext
-            onDragEnd={(result) => handleDragEnd(result, "today")}
-          >
             <Droppable droppableId="today-tasks">
               {(provided) => (
                 <div ref={provided.innerRef} {...provided.droppableProps}>
@@ -332,7 +379,6 @@ export default function DashboardPage() {
                 </div>
               )}
             </Droppable>
-          </DragDropContext>
 
           {/* Completed today tasks */}
           {todayCompleted.map((task) => (
@@ -358,9 +404,6 @@ export default function DashboardPage() {
             onMoveToToday={moveTomorrowToToday}
           />
 
-          <DragDropContext
-            onDragEnd={(result) => handleDragEnd(result, "tomorrow")}
-          >
             <Droppable droppableId="tomorrow-tasks">
               {(provided) => (
                 <div ref={provided.innerRef} {...provided.droppableProps}>
@@ -399,7 +442,6 @@ export default function DashboardPage() {
                 </div>
               )}
             </Droppable>
-          </DragDropContext>
 
           <AddTaskForm
             onAdd={(title) => addTask(title, tomorrow)}
@@ -407,6 +449,7 @@ export default function DashboardPage() {
             label="ADD"
           />
         </section>
+       </DragDropContext>
 
         {/* Backlog */}
         <BacklogPanel
