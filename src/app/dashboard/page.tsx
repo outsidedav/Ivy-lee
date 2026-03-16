@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { signOut } from "next-auth/react";
 import {
   DragDropContext,
@@ -36,6 +36,69 @@ function formatDate(dateStr: string): string {
     month: "long",
     day: "numeric",
   });
+}
+
+function TomorrowHeader({
+  tomorrow,
+  hasTasks,
+  onReset,
+  onMoveToToday,
+}: {
+  tomorrow: string;
+  hasTasks: boolean;
+  onReset: () => void;
+  onMoveToToday: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  return (
+    <div className="flex items-baseline justify-between mb-4">
+      <h2 className="text-xs font-medium tracking-widest uppercase text-[#999]">
+        Tomorrow
+      </h2>
+      <div className="flex items-baseline gap-3">
+        <span className="text-xs text-[#ccc]">{formatDate(tomorrow)}</span>
+        {hasTasks && (
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setOpen(!open)}
+              className="text-sm text-[#ccc] hover:text-[#1a1a1a] transition-colors px-1 leading-none"
+              title="More actions"
+            >
+              ⋮
+            </button>
+            {open && (
+              <div className="absolute right-0 top-5 bg-white border border-[#eee] shadow-sm rounded-md py-1 z-10 min-w-[160px]">
+                <button
+                  onClick={() => { onMoveToToday(); setOpen(false); }}
+                  className="block w-full text-left px-3 py-1.5 text-xs text-[#1a1a1a] hover:bg-[#f5f5f5] transition-colors"
+                >
+                  Move all to Today
+                </button>
+                <button
+                  onClick={() => { onReset(); setOpen(false); }}
+                  className="block w-full text-left px-3 py-1.5 text-xs text-[#c00] hover:bg-[#f5f5f5] transition-colors"
+                >
+                  Reset
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -109,6 +172,26 @@ export default function DashboardPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date }),
     });
+    fetchAll();
+  }
+
+  async function moveTomorrowToToday() {
+    const incomplete = tomorrowTasks.filter((t) => !t.is_completed);
+    if (incomplete.length === 0) return;
+    if (todayTasks.length + incomplete.length > 6) {
+      alert(`Can't move ${incomplete.length} tasks — today already has ${todayTasks.length} (max 6).`);
+      return;
+    }
+    if (!confirm("Move all tomorrow's tasks to today?")) return;
+    await Promise.all(
+      incomplete.map((t) =>
+        fetch(`/api/tasks/${t.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target_date: today }),
+        })
+      )
+    );
     fetchAll();
   }
 
@@ -268,22 +351,12 @@ export default function DashboardPage() {
 
         {/* Tomorrow Section */}
         <section>
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 className="text-xs font-medium tracking-widest uppercase text-[#999]">
-              Tomorrow
-            </h2>
-            <div className="flex items-baseline gap-3">
-              {tomorrowTasks.length > 0 && (
-                <button
-                  onClick={() => resetDay(tomorrow)}
-                  className="text-xs text-[#ccc] hover:text-[#c00] transition-colors"
-                >
-                  Reset
-                </button>
-              )}
-              <span className="text-xs text-[#ccc]">{formatDate(tomorrow)}</span>
-            </div>
-          </div>
+          <TomorrowHeader
+            tomorrow={tomorrow}
+            hasTasks={tomorrowTasks.length > 0}
+            onReset={() => resetDay(tomorrow)}
+            onMoveToToday={moveTomorrowToToday}
+          />
 
           <DragDropContext
             onDragEnd={(result) => handleDragEnd(result, "tomorrow")}
