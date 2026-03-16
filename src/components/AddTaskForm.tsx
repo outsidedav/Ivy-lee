@@ -6,13 +6,14 @@ interface AddTaskFormProps {
   onAdd: (title: string) => Promise<void>;
   taskCount: number;
   label: string;
+  maxTasks?: number;
 }
 
-export default function AddTaskForm({ onAdd, taskCount, label }: AddTaskFormProps) {
+export default function AddTaskForm({ onAdd, taskCount, label, maxTasks = 6 }: AddTaskFormProps) {
   const [title, setTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isFull = taskCount >= 6;
+  const isFull = taskCount >= maxTasks;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +31,7 @@ export default function AddTaskForm({ onAdd, taskCount, label }: AddTaskFormProp
   if (isFull) {
     return (
       <p className="text-xs text-[#999] py-3">
-        6 tasks set. Focus on these.
+        {maxTasks} tasks set. Focus on these.
       </p>
     );
   }
@@ -41,7 +42,7 @@ export default function AddTaskForm({ onAdd, taskCount, label }: AddTaskFormProp
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder={`Add a task (${taskCount}/6)`}
+        placeholder={`Add a task (${taskCount}/${maxTasks})`}
         maxLength={280}
         className="flex-1 text-sm bg-transparent border-b border-[#ddd] focus:border-[#1a1a1a] outline-none py-1 placeholder:text-[#ccc] text-[#1a1a1a] transition-colors"
       />

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { signOut } from "next-auth/react";
+import { useEffect, useState, useCallback } from "react";
 import {
   DragDropContext,
   Droppable,
@@ -13,6 +12,8 @@ import AddTaskForm from "@/components/AddTaskForm";
 import PointsDisplay from "@/components/PointsDisplay";
 import CoffeeBreakButton from "@/components/CoffeeBreakButton";
 import BacklogPanel from "@/components/BacklogPanel";
+import OverflowMenu from "@/components/OverflowMenu";
+import HeaderMenu from "@/components/HeaderMenu";
 
 interface Task {
   id: string;
@@ -38,69 +39,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function TomorrowHeader({
-  tomorrow,
-  hasTasks,
-  onReset,
-  onMoveToToday,
-}: {
-  tomorrow: string;
-  hasTasks: boolean;
-  onReset: () => void;
-  onMoveToToday: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    if (open) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
-
-  return (
-    <div className="flex items-baseline justify-between mb-4">
-      <h2 className="text-xs font-medium tracking-widest uppercase text-[#999]">
-        Tomorrow
-      </h2>
-      <div className="flex items-baseline gap-3">
-        <span className="text-xs text-[#ccc]">{formatDate(tomorrow)}</span>
-        {hasTasks && (
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setOpen(!open)}
-              className="text-sm text-[#ccc] hover:text-[#1a1a1a] transition-colors px-1 leading-none"
-              title="More actions"
-            >
-              ⋮
-            </button>
-            {open && (
-              <div className="absolute right-0 top-5 bg-white border border-[#eee] shadow-sm rounded-md py-1 z-10 min-w-[160px]">
-                <button
-                  onClick={() => { onMoveToToday(); setOpen(false); }}
-                  className="block w-full text-left px-3 py-1.5 text-xs text-[#1a1a1a] hover:bg-[#f5f5f5] transition-colors"
-                >
-                  Move all to Today
-                </button>
-                <button
-                  onClick={() => { onReset(); setOpen(false); }}
-                  className="block w-full text-left px-3 py-1.5 text-xs text-[#c00] hover:bg-[#f5f5f5] transition-colors"
-                >
-                  Reset
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function DashboardPage() {
   const today = getLocalDate(0);
   const tomorrow = getLocalDate(1);
@@ -109,28 +47,33 @@ export default function DashboardPage() {
   const [tomorrowTasks, setTomorrowTasks] = useState<Task[]>([]);
   const [backlogTasks, setBacklogTasks] = useState<Task[]>([]);
   const [balance, setBalance] = useState(0);
+  const [maxTasks, setMaxTasks] = useState(6);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
-    const [todayRes, tomorrowRes, backlogRes, rewardsRes] = await Promise.all([
-      fetch(`/api/tasks?date=${today}`),
-      fetch(`/api/tasks?date=${tomorrow}`),
-      fetch(`/api/tasks/backlog?today=${today}`),
-      fetch("/api/rewards"),
-    ]);
+    const [todayRes, tomorrowRes, backlogRes, rewardsRes, settingsRes] =
+      await Promise.all([
+        fetch(`/api/tasks?date=${today}`),
+        fetch(`/api/tasks?date=${tomorrow}`),
+        fetch(`/api/tasks/backlog?today=${today}`),
+        fetch("/api/rewards"),
+        fetch("/api/settings"),
+      ]);
 
-    const [todayData, tomorrowData, backlogData, rewardsData] =
+    const [todayData, tomorrowData, backlogData, rewardsData, settingsData] =
       await Promise.all([
         todayRes.json(),
         tomorrowRes.json(),
         backlogRes.json(),
         rewardsRes.json(),
+        settingsRes.json(),
       ]);
 
     setTodayTasks(Array.isArray(todayData) ? todayData : []);
     setTomorrowTasks(Array.isArray(tomorrowData) ? tomorrowData : []);
     setBacklogTasks(Array.isArray(backlogData) ? backlogData : []);
     setBalance(rewardsData.balance ?? 0);
+    setMaxTasks(settingsData.max_tasks_per_day ?? 6);
     setLoading(false);
   }, [today, tomorrow]);
 
@@ -178,8 +121,10 @@ export default function DashboardPage() {
   async function moveTomorrowToToday() {
     const incomplete = tomorrowTasks.filter((t) => !t.is_completed);
     if (incomplete.length === 0) return;
-    if (todayTasks.length + incomplete.length > 6) {
-      alert(`Can't move ${incomplete.length} tasks — today already has ${todayTasks.length} (max 6).`);
+    if (todayTasks.length + incomplete.length > maxTasks) {
+      alert(
+        `Can't move ${incomplete.length} tasks — today already has ${todayTasks.length} (max ${maxTasks}).`
+      );
       return;
     }
     if (!confirm("Move all tomorrow's tasks to today?")) return;
@@ -227,10 +172,13 @@ export default function DashboardPage() {
     const sourceList = result.source.droppableId;
     const destList = result.destination.droppableId;
 
-    const sourceTasks = sourceList === "today-tasks" ? todayTasks : tomorrowTasks;
+    const sourceTasks =
+      sourceList === "today-tasks" ? todayTasks : tomorrowTasks;
     const destTasks = destList === "today-tasks" ? todayTasks : tomorrowTasks;
-    const setSourceTasks = sourceList === "today-tasks" ? setTodayTasks : setTomorrowTasks;
-    const setDestTasks = destList === "today-tasks" ? setTodayTasks : setTomorrowTasks;
+    const setSourceTasks =
+      sourceList === "today-tasks" ? setTodayTasks : setTomorrowTasks;
+    const setDestTasks =
+      destList === "today-tasks" ? setTodayTasks : setTomorrowTasks;
     const destDate = destList === "today-tasks" ? today : tomorrow;
 
     const sourceIncomplete = sourceTasks.filter((t) => !t.is_completed);
@@ -255,8 +203,8 @@ export default function DashboardPage() {
       const destIncomplete = destTasks.filter((t) => !t.is_completed);
       const destCompleted = destTasks.filter((t) => t.is_completed);
 
-      if (destIncomplete.length >= 6) {
-        alert("That list already has 6 tasks.");
+      if (destIncomplete.length >= maxTasks) {
+        alert(`That list already has ${maxTasks} tasks.`);
         return;
       }
 
@@ -266,10 +214,16 @@ export default function DashboardPage() {
 
       // Insert into destination
       const newDest = [...destIncomplete];
-      newDest.splice(result.destination.index, 0, { ...moved, target_date: destDate });
+      newDest.splice(result.destination.index, 0, {
+        ...moved,
+        target_date: destDate,
+      });
 
       // Re-prioritize both lists
-      const updatedSource = newSource.map((t, i) => ({ ...t, priority: i + 1 }));
+      const updatedSource = newSource.map((t, i) => ({
+        ...t,
+        priority: i + 1,
+      }));
       const updatedDest = newDest.map((t, i) => ({ ...t, priority: i + 1 }));
 
       setSourceTasks([...updatedSource, ...sourceCompleted]);
@@ -285,7 +239,9 @@ export default function DashboardPage() {
         fetch("/api/tasks/reorder", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderedIds: updatedSource.map((t) => t.id) }),
+          body: JSON.stringify({
+            orderedIds: updatedSource.map((t) => t.id),
+          }),
         }),
         fetch("/api/tasks/reorder", {
           method: "POST",
@@ -318,36 +274,36 @@ export default function DashboardPage() {
           </h1>
           <div className="flex items-center gap-5">
             <PointsDisplay balance={balance} />
-            <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              className="text-xs text-[#999] hover:text-[#1a1a1a] transition-colors"
-            >
-              Sign out
-            </button>
+            <HeaderMenu />
           </div>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto px-6 py-8">
-       <DragDropContext onDragEnd={handleDragEnd}>
-        {/* Today Section */}
-        <section>
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 className="text-xs font-medium tracking-widest uppercase text-[#999]">
-              Today
-            </h2>
-            <div className="flex items-baseline gap-3">
-              {todayTasks.length > 0 && (
-                <button
-                  onClick={() => resetDay(today)}
-                  className="text-xs text-[#ccc] hover:text-[#c00] transition-colors"
-                >
-                  Reset
-                </button>
-              )}
-              <span className="text-xs text-[#ccc]">{formatDate(today)}</span>
+        <DragDropContext onDragEnd={handleDragEnd}>
+          {/* Today Section */}
+          <section>
+            <div className="flex items-baseline justify-between mb-4">
+              <h2 className="text-xs font-medium tracking-widest uppercase text-[#999]">
+                Today
+              </h2>
+              <div className="flex items-baseline gap-3">
+                <span className="text-xs text-[#ccc]">
+                  {formatDate(today)}
+                </span>
+                {todayTasks.length > 0 && (
+                  <OverflowMenu
+                    items={[
+                      {
+                        label: "Reset",
+                        onClick: () => resetDay(today),
+                        className: "text-[#c00]",
+                      },
+                    ]}
+                  />
+                )}
+              </div>
             </div>
-          </div>
 
             <Droppable droppableId="today-tasks">
               {(provided) => (
@@ -380,29 +336,48 @@ export default function DashboardPage() {
               )}
             </Droppable>
 
-          {/* Completed today tasks */}
-          {todayCompleted.map((task) => (
-            <TaskItem key={task.id} task={task} onComplete={() => {}} />
-          ))}
+            {/* Completed today tasks */}
+            {todayCompleted.map((task) => (
+              <TaskItem key={task.id} task={task} onComplete={() => {}} />
+            ))}
 
-          {todayTasks.length === 0 && (
-            <p className="text-sm text-[#ccc] py-4">
-              No tasks for today. Add tomorrow&apos;s tasks below.
-            </p>
-          )}
-        </section>
+            {todayTasks.length === 0 && (
+              <p className="text-sm text-[#ccc] py-4">
+                No tasks for today. Add tomorrow&apos;s tasks below.
+              </p>
+            )}
+          </section>
 
-        {/* Divider */}
-        <div className="my-8 border-t border-[#eee]" />
+          {/* Divider */}
+          <div className="my-8 border-t border-[#eee]" />
 
-        {/* Tomorrow Section */}
-        <section>
-          <TomorrowHeader
-            tomorrow={tomorrow}
-            hasTasks={tomorrowTasks.length > 0}
-            onReset={() => resetDay(tomorrow)}
-            onMoveToToday={moveTomorrowToToday}
-          />
+          {/* Tomorrow Section */}
+          <section>
+            <div className="flex items-baseline justify-between mb-4">
+              <h2 className="text-xs font-medium tracking-widest uppercase text-[#999]">
+                Tomorrow
+              </h2>
+              <div className="flex items-baseline gap-3">
+                <span className="text-xs text-[#ccc]">
+                  {formatDate(tomorrow)}
+                </span>
+                {tomorrowTasks.length > 0 && (
+                  <OverflowMenu
+                    items={[
+                      {
+                        label: "Move all to Today",
+                        onClick: moveTomorrowToToday,
+                      },
+                      {
+                        label: "Reset",
+                        onClick: () => resetDay(tomorrow),
+                        className: "text-[#c00]",
+                      },
+                    ]}
+                  />
+                )}
+              </div>
+            </div>
 
             <Droppable droppableId="tomorrow-tasks">
               {(provided) => (
@@ -430,7 +405,7 @@ export default function DashboardPage() {
                                 onClick={() => deleteTask(task.id)}
                                 className="text-xs text-[#ccc] hover:text-[#c00] transition-colors"
                               >
-                                ✕
+                                &#x2715;
                               </button>
                             }
                           />
@@ -443,18 +418,20 @@ export default function DashboardPage() {
               )}
             </Droppable>
 
-          <AddTaskForm
-            onAdd={(title) => addTask(title, tomorrow)}
-            taskCount={tomorrowTasks.length}
-            label="ADD"
-          />
-        </section>
-       </DragDropContext>
+            <AddTaskForm
+              onAdd={(title) => addTask(title, tomorrow)}
+              taskCount={tomorrowTasks.length}
+              maxTasks={maxTasks}
+              label="ADD"
+            />
+          </section>
+        </DragDropContext>
 
         {/* Backlog */}
         <BacklogPanel
           tasks={backlogTasks}
           todayCount={todayTasks.length}
+          maxTasks={maxTasks}
           onMoveToToday={moveToToday}
           onDismiss={deleteTask}
         />

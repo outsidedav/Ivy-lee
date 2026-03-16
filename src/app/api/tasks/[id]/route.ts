@@ -55,6 +55,63 @@ export async function PATCH(
     return NextResponse.json(data);
   }
 
+  // Handle un-complete (return task)
+  if (body.is_completed === false && task.is_completed) {
+    const targetDate = body.target_date ?? task.target_date;
+
+    // Get user's max tasks setting
+    const { data: user } = await supabase
+      .from("users")
+      .select("max_tasks_per_day")
+      .eq("id", session.user.id)
+      .single();
+    const maxTasks = user?.max_tasks_per_day ?? 6;
+
+    // Check task count for the target date
+    const { count } = await supabase
+      .from("tasks")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", session.user.id)
+      .eq("target_date", targetDate)
+      .eq("is_completed", false);
+
+    if (count !== null && count >= maxTasks) {
+      return NextResponse.json(
+        { error: `That day already has ${maxTasks} tasks` },
+        { status: 400 }
+      );
+    }
+
+    const newPriority = (count ?? 0) + 1;
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({
+        is_completed: false,
+        completed_at: null,
+        target_date: targetDate,
+        priority: newPriority,
+      })
+      .eq("id", id)
+      .eq("user_id", session.user.id)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Reverse the points that were awarded
+    const points = pointsForPriority(task.priority);
+    await supabase.from("points_ledger").insert({
+      user_id: session.user.id,
+      delta: -points,
+      reason: "task_returned",
+      task_id: id,
+    });
+
+    return NextResponse.json(data);
+  }
+
   // Handle title edit
   if (body.title !== undefined) {
     const title = String(body.title).trim();
@@ -80,8 +137,8 @@ export async function PATCH(
   // Handle priority update
   if (body.priority !== undefined) {
     const priority = Number(body.priority);
-    if (priority < 1 || priority > 6) {
-      return NextResponse.json({ error: "Priority must be 1-6" }, { status: 400 });
+    if (priority < 1 || priority > 10) {
+      return NextResponse.json({ error: "Priority must be 1-10" }, { status: 400 });
     }
 
     const { data, error } = await supabase
@@ -99,17 +156,25 @@ export async function PATCH(
     return NextResponse.json(data);
   }
 
-  // Handle moving to today (for backlog items)
+  // Handle moving to another date (for backlog items or cross-list drag)
   if (body.target_date) {
+    // Get user's max tasks setting
+    const { data: user } = await supabase
+      .from("users")
+      .select("max_tasks_per_day")
+      .eq("id", session.user.id)
+      .single();
+    const maxTasks = user?.max_tasks_per_day ?? 6;
+
     const { count } = await supabase
       .from("tasks")
       .select("*", { count: "exact", head: true })
       .eq("user_id", session.user.id)
       .eq("target_date", body.target_date);
 
-    if (count !== null && count >= 6) {
+    if (count !== null && count >= maxTasks) {
       return NextResponse.json(
-        { error: "Today already has 6 tasks" },
+        { error: `That day already has ${maxTasks} tasks` },
         { status: 400 }
       );
     }

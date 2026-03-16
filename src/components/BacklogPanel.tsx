@@ -15,6 +15,7 @@ interface Task {
 interface BacklogPanelProps {
   tasks: Task[];
   todayCount: number;
+  maxTasks?: number;
   onMoveToToday: (id: string) => Promise<void>;
   onDismiss: (id: string) => Promise<void>;
 }
@@ -22,6 +23,7 @@ interface BacklogPanelProps {
 export default function BacklogPanel({
   tasks,
   todayCount,
+  maxTasks = 6,
   onMoveToToday,
   onDismiss,
 }: BacklogPanelProps) {
@@ -53,7 +55,7 @@ export default function BacklogPanel({
               onComplete={() => {}}
               actions={
                 <>
-                  {todayCount < 6 && (
+                  {todayCount < maxTasks && (
                     <button
                       onClick={() => onMoveToToday(task.id)}
                       className="text-xs text-[#999] hover:text-[#1a1a1a] transition-colors"

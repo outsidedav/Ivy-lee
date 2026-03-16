@@ -48,6 +48,14 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient();
 
+  // Get user's max tasks setting
+  const { data: user } = await supabase
+    .from("users")
+    .select("max_tasks_per_day")
+    .eq("id", session.user.id)
+    .single();
+  const maxTasks = user?.max_tasks_per_day ?? 6;
+
   // Check task count for this date
   const { count } = await supabase
     .from("tasks")
@@ -55,9 +63,9 @@ export async function POST(req: NextRequest) {
     .eq("user_id", session.user.id)
     .eq("target_date", target_date);
 
-  if (count !== null && count >= 6) {
+  if (count !== null && count >= maxTasks) {
     return NextResponse.json(
-      { error: "Maximum 6 tasks per day" },
+      { error: `Maximum ${maxTasks} tasks per day` },
       { status: 400 }
     );
   }
