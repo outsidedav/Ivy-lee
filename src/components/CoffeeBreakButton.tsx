@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { COFFEE_BREAK_COST } from "@/lib/points";
+import dynamic from "next/dynamic";
+
+const EspressoAnimation = dynamic(() => import("./EspressoAnimation"), {
+  ssr: false,
+});
 
 interface CoffeeBreakButtonProps {
   balance: number;
@@ -13,7 +18,7 @@ export default function CoffeeBreakButton({
   onRedeem,
 }: CoffeeBreakButtonProps) {
   const [isRedeeming, setIsRedeeming] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
+  const [showAnimation, setShowAnimation] = useState(false);
 
   const canAfford = balance >= COFFEE_BREAK_COST;
 
@@ -22,32 +27,33 @@ export default function CoffeeBreakButton({
     setIsRedeeming(true);
     try {
       await onRedeem();
-      setShowCelebration(true);
-      setTimeout(() => setShowCelebration(false), 2000);
+      setShowAnimation(true);
     } finally {
       setIsRedeeming(false);
     }
   }
 
-  return (
-    <div className="relative">
-      <button
-        onClick={handleRedeem}
-        disabled={!canAfford || isRedeeming}
-        className={`w-full py-3 text-sm font-medium tracking-wide border transition-all ${
-          canAfford
-            ? "border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white"
-            : "border-[#e5e5e5] text-[#ccc] cursor-not-allowed"
-        }`}
-      >
-        ☕ Take a Coffee Break ({COFFEE_BREAK_COST} pts)
-      </button>
+  const handleCloseAnimation = useCallback(() => {
+    setShowAnimation(false);
+  }, []);
 
-      {showCelebration && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#fafafa]/90 animate-fade-in">
-          <span className="text-lg">☕ Enjoy your break!</span>
-        </div>
-      )}
-    </div>
+  return (
+    <>
+      <div className="relative">
+        <button
+          onClick={handleRedeem}
+          disabled={!canAfford || isRedeeming}
+          className={`w-full py-3 text-sm font-medium tracking-wide border transition-all ${
+            canAfford
+              ? "border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white"
+              : "border-[#e5e5e5] text-[#ccc] cursor-not-allowed"
+          }`}
+        >
+          ☕ Take a Coffee Break ({COFFEE_BREAK_COST} pts)
+        </button>
+      </div>
+
+      {showAnimation && <EspressoAnimation onClose={handleCloseAnimation} />}
+    </>
   );
 }
