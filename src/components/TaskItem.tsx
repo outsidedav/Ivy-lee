@@ -88,12 +88,12 @@ export default function TaskItem({
         <button
           onClick={handleComplete}
           disabled={task.is_completed}
-          className={`relative w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+          className={`relative w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center ${
             task.is_completed
               ? "bg-[#1a1a1a] border-[#1a1a1a]"
               : popping
-                ? "bg-[#1a1a1a] border-[#1a1a1a] scale-125"
-                : "border-[#aaa] hover:border-[#777] hover:scale-110 active:scale-90"
+                ? "bg-[#1a1a1a] border-[#1a1a1a]"
+                : "border-[#aaa] hover:border-[#777] hover:scale-110 active:scale-90 transition-all duration-150"
           }`}
           style={
             popping
@@ -113,12 +113,13 @@ export default function TaskItem({
               style={
                 popping
                   ? {
+                      strokeDasharray: 12,
                       animation: "checkDraw 0.3s ease-out 0.1s both",
                     }
                   : undefined
               }
             >
-              <path d="M2 6l3 3 5-5" strokeDasharray="12" strokeDashoffset={popping ? undefined : "0"} />
+              <path d="M2 6l3 3 5-5" />
             </svg>
           )}
         </button>
@@ -147,7 +148,7 @@ export default function TaskItem({
       )}
 
       {!task.is_completed && (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <div className="opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity flex gap-1">
           {onEdit && !editing && (
             <button
               onClick={() => setEditing(true)}
@@ -162,7 +163,7 @@ export default function TaskItem({
       )}
 
       {task.is_completed && actions && (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <div className="opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity flex gap-1">
           {actions}
         </div>
       )}

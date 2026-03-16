@@ -330,7 +330,7 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
 
       function drawCup(p: p5Type) {
         p.push();
-        p.translate(0, 115);
+        p.translate(0, 128);
 
         // Handle
         p.noFill();
@@ -406,7 +406,7 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
         if (p.frameCount % 4 === 0) {
           steamParticles.push({
             x: p.random(-10, 10),
-            y: 85,
+            y: 98,
             vx: p.random(-0.3, 0.3),
             vy: p.random(-1.5, -0.8),
             alpha: 60,
@@ -466,9 +466,9 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
           d.speed += 0.2; // gravity
           d.alpha -= windingDown ? 3 : 0; // fade during wind-down
 
-          if (d.y > 95 || d.alpha <= 0) {
+          if (d.y > 108 || d.alpha <= 0) {
             droplets.splice(i, 1);
-            if (d.y > 95 && cupLevel < 20) {
+            if (d.y > 108 && cupLevel < 20) {
               cupLevel += 0.06;
               cremaRipple = 1;
             }

@@ -19,10 +19,11 @@ export default function AddTaskForm({ onAdd, taskCount, label, maxTasks = 6 }: A
     e.preventDefault();
     if (!title.trim() || isFull || isSubmitting) return;
 
+    const value = title.trim();
+    setTitle("");
     setIsSubmitting(true);
     try {
-      await onAdd(title.trim());
-      setTitle("");
+      await onAdd(value);
     } finally {
       setIsSubmitting(false);
     }
