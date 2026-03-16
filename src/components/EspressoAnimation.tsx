@@ -29,6 +29,9 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
       }[] = [];
       let startTime = 0;
       let extractionComplete = false;
+      let windingDown = false;
+      let windDownStart = 0;
+      const WIND_DOWN_MS = 2500; // 2.5 seconds to wind down
       let cremaRipple = 0;
       const AUTO_CLOSE_MS = 5 * 60 * 1000;
 
@@ -73,15 +76,54 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
         drawGroupHead(p);
         drawPortafilter(p);
 
-        if (isExtracting && !extractionComplete) {
+        if (isExtracting && !windingDown && !extractionComplete) {
+          // Active extraction — full pressure, dripping
           updateExtraction(p);
           gaugeAngle = p.lerp(gaugeAngle, 0.78, 0.03);
-        } else {
+        } else if (windingDown) {
+          // Wind-down phase — pressure drops, drips slow and stop
+          const elapsed = p.millis() - windDownStart;
+          const progress = Math.min(elapsed / WIND_DOWN_MS, 1);
+
+          // Ease gauge back down
+          gaugeAngle = p.lerp(gaugeAngle, -2.35, 0.02 + progress * 0.04);
+
+          // Slow drips in the first half, then stop
+          if (progress < 0.5 && p.frameCount % (6 + Math.floor(progress * 20)) === 0) {
+            droplets.push({
+              x: -5.5 + p.random(-1, 1),
+              y: 34,
+              speed: p.random(2, 3),
+              alpha: 255 * (1 - progress),
+            });
+            droplets.push({
+              x: 5.5 + p.random(-1, 1),
+              y: 34,
+              speed: p.random(2, 3),
+              alpha: 255 * (1 - progress),
+            });
+          }
+
+          // Keep drawing remaining droplets
+          drawRemainingDroplets(p);
+
+          // Transition to complete when wind-down finishes and all droplets gone
+          if (progress >= 1 && droplets.length === 0) {
+            windingDown = false;
+            isExtracting = false;
+            extractionComplete = true;
+          }
+        } else if (!extractionComplete) {
+          // Idle — gauge at rest
           gaugeAngle = p.lerp(gaugeAngle, -2.35, 0.06);
+        } else {
+          // Extraction complete — gauge settles at rest
+          gaugeAngle = p.lerp(gaugeAngle, -2.35, 0.02);
         }
 
         drawCup(p);
 
+        // Steam fades in smoothly after extraction complete
         if (extractionComplete) {
           drawSteam(p);
         }
@@ -97,6 +139,8 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
         if (extractionComplete) {
           p.fill(60);
           p.text("Enjoy your break.", w / 2, h - 40 * scale);
+        } else if (windingDown) {
+          p.text("Finishing up...", w / 2, h - 40 * scale);
         } else if (isExtracting) {
           p.text("Pulling shot...", w / 2, h - 40 * scale);
         } else if (!extractionStarted) {
@@ -403,6 +447,16 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
         }
 
         // Draw and update droplets
+        drawRemainingDroplets(p);
+
+        // When cup is full, start the wind-down phase
+        if (cupLevel >= 20 && !windingDown) {
+          windingDown = true;
+          windDownStart = p.millis();
+        }
+      }
+
+      function drawRemainingDroplets(p: p5Type) {
         p.noStroke();
         for (let i = droplets.length - 1; i >= 0; i--) {
           const d = droplets[i];
@@ -410,16 +464,13 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
           p.ellipse(d.x, d.y, 2.5, 5);
           d.y += d.speed;
           d.speed += 0.2; // gravity
+          d.alpha -= windingDown ? 3 : 0; // fade during wind-down
 
-          if (d.y > 95) {
+          if (d.y > 95 || d.alpha <= 0) {
             droplets.splice(i, 1);
-            if (cupLevel < 20) {
+            if (d.y > 95 && cupLevel < 20) {
               cupLevel += 0.06;
               cremaRipple = 1;
-            } else if (!extractionComplete) {
-              extractionComplete = true;
-              isExtracting = false;
-              droplets = [];
             }
           }
         }

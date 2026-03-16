@@ -82,6 +82,21 @@ export default function DashboardPage() {
   }, [fetchAll]);
 
   async function addTask(title: string, targetDate: string) {
+    // Optimistic update — show the task immediately
+    const tempId = `temp-${Date.now()}`;
+    const setTasks = targetDate === today ? setTodayTasks : setTomorrowTasks;
+    const currentTasks = targetDate === today ? todayTasks : tomorrowTasks;
+    const optimisticTask: Task = {
+      id: tempId,
+      title,
+      priority: currentTasks.length + 1,
+      is_completed: false,
+      target_date: targetDate,
+      completed_at: null,
+    };
+    setTasks((prev) => [...prev, optimisticTask]);
+
+    // Persist in background, then reconcile
     await fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -151,6 +166,13 @@ export default function DashboardPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ target_date: today }),
     });
+    fetchAll();
+  }
+
+  async function resetAll() {
+    if (!confirm("This will delete ALL your tasks and points. Are you sure?"))
+      return;
+    await fetch("/api/tasks/reset-all", { method: "POST" });
     fetchAll();
   }
 
@@ -274,7 +296,7 @@ export default function DashboardPage() {
           </h1>
           <div className="flex items-center gap-5">
             <PointsDisplay balance={balance} />
-            <HeaderMenu />
+            <HeaderMenu onResetAll={resetAll} />
           </div>
         </div>
       </header>
@@ -288,7 +310,7 @@ export default function DashboardPage() {
                 Today
               </h2>
               <div className="flex items-baseline gap-3">
-                <span className="text-xs text-[#ccc]">
+                <span className="text-xs text-[#aaa]">
                   {formatDate(today)}
                 </span>
                 {todayTasks.length > 0 && (
@@ -342,7 +364,7 @@ export default function DashboardPage() {
             ))}
 
             {todayTasks.length === 0 && (
-              <p className="text-sm text-[#ccc] py-4">
+              <p className="text-sm text-[#aaa] py-4">
                 No tasks for today. Add tomorrow&apos;s tasks below.
               </p>
             )}
@@ -358,7 +380,7 @@ export default function DashboardPage() {
                 Tomorrow
               </h2>
               <div className="flex items-baseline gap-3">
-                <span className="text-xs text-[#ccc]">
+                <span className="text-xs text-[#aaa]">
                   {formatDate(tomorrow)}
                 </span>
                 {tomorrowTasks.length > 0 && (
@@ -403,7 +425,7 @@ export default function DashboardPage() {
                             actions={
                               <button
                                 onClick={() => deleteTask(task.id)}
-                                className="text-xs text-[#ccc] hover:text-[#c00] transition-colors"
+                                className="text-xs text-[#aaa] hover:text-[#c00] transition-colors"
                               >
                                 &#x2715;
                               </button>

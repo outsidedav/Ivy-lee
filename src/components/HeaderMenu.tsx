@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 
-export default function HeaderMenu() {
+interface HeaderMenuProps {
+  onResetAll?: () => void;
+}
+
+export default function HeaderMenu({ onResetAll }: HeaderMenuProps) {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -52,10 +56,24 @@ export default function HeaderMenu() {
           >
             Settings
           </Link>
+          {onResetAll && (
+            <>
+              <div className="my-1 border-t border-[#eee]" />
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  onResetAll();
+                }}
+                className="block w-full text-left px-3 py-1.5 text-xs text-[#c00] hover:bg-[#f5f5f5] transition-colors"
+              >
+                Reset Everything
+              </button>
+            </>
+          )}
           <div className="my-1 border-t border-[#eee]" />
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="block w-full text-left px-3 py-1.5 text-xs text-[#999] hover:bg-[#f5f5f5] transition-colors"
+            className="block w-full text-left px-3 py-1.5 text-xs text-[#777] hover:bg-[#f5f5f5] transition-colors"
           >
             Sign out
           </button>

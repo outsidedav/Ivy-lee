@@ -60,7 +60,7 @@ export default function TaskItem({
       }`}
     >
       {showDragHandle && !task.is_completed && (
-        <span className="text-[#ccc] cursor-grab select-none text-xs tracking-widest">
+        <span className="text-[#aaa] cursor-grab select-none text-xs tracking-widest">
           ⠿
         </span>
       )}
@@ -112,7 +112,7 @@ export default function TaskItem({
           {onEdit && !editing && (
             <button
               onClick={() => setEditing(true)}
-              className="text-xs text-[#ccc] hover:text-[#1a1a1a] transition-colors px-1"
+              className="text-xs text-[#aaa] hover:text-[#1a1a1a] transition-colors px-1"
               title="Edit"
             >
               ✎

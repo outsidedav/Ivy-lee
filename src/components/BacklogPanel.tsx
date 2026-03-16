@@ -35,7 +35,7 @@ export default function BacklogPanel({
     <div className="mt-8">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-xs font-medium tracking-wide text-[#999] hover:text-[#666] transition-colors"
+        className="flex items-center gap-2 text-xs font-medium tracking-wide text-[#777] hover:text-[#666] transition-colors"
       >
         <span
           className="inline-block transition-transform"
@@ -58,14 +58,14 @@ export default function BacklogPanel({
                   {todayCount < maxTasks && (
                     <button
                       onClick={() => onMoveToToday(task.id)}
-                      className="text-xs text-[#999] hover:text-[#1a1a1a] transition-colors"
+                      className="text-xs text-[#777] hover:text-[#1a1a1a] transition-colors"
                     >
                       → Today
                     </button>
                   )}
                   <button
                     onClick={() => onDismiss(task.id)}
-                    className="text-xs text-[#999] hover:text-[#c00] transition-colors"
+                    className="text-xs text-[#777] hover:text-[#c00] transition-colors"
                   >
                     Dismiss
                   </button>

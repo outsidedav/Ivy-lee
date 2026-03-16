@@ -44,12 +44,12 @@ export default function AddTaskForm({ onAdd, taskCount, label, maxTasks = 6 }: A
         onChange={(e) => setTitle(e.target.value)}
         placeholder={`Add a task (${taskCount}/${maxTasks})`}
         maxLength={280}
-        className="flex-1 text-sm bg-transparent border-b border-[#ddd] focus:border-[#1a1a1a] outline-none py-1 placeholder:text-[#ccc] text-[#1a1a1a] transition-colors"
+        className="flex-1 text-sm bg-transparent border-b border-[#ddd] focus:border-[#1a1a1a] outline-none py-1 placeholder:text-[#aaa] text-[#1a1a1a] transition-colors"
       />
       <button
         type="submit"
         disabled={!title.trim() || isSubmitting}
-        className="text-xs font-medium tracking-wide text-[#1a1a1a] disabled:text-[#ccc] transition-colors"
+        className="text-xs font-medium tracking-wide text-[#1a1a1a] disabled:text-[#aaa] transition-colors"
       >
         {label}
       </button>
