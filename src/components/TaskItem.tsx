@@ -28,6 +28,7 @@ export default function TaskItem({
 }: TaskItemProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.title);
+  const [popping, setPopping] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -36,6 +37,15 @@ export default function TaskItem({
       inputRef.current.select();
     }
   }, [editing]);
+
+  function handleComplete() {
+    if (task.is_completed) return;
+    setPopping(true);
+    // Small delay so the pop animation plays before the state change
+    setTimeout(() => {
+      onComplete(task.id);
+    }, 300);
+  }
 
   function handleSave() {
     const trimmed = editValue.trim();
@@ -61,7 +71,7 @@ export default function TaskItem({
     >
       {showDragHandle && !task.is_completed && (
         <span className="text-[#aaa] cursor-grab select-none text-xs tracking-widest">
-          ⠿
+          &#x2807;
         </span>
       )}
 
@@ -69,21 +79,50 @@ export default function TaskItem({
         {task.priority}
       </span>
 
-      <button
-        onClick={() => !task.is_completed && onComplete(task.id)}
-        disabled={task.is_completed}
-        className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-colors ${
-          task.is_completed
-            ? "bg-[#1a1a1a] border-[#1a1a1a]"
-            : "border-[#ccc] hover:border-[#999]"
-        }`}
-      >
-        {task.is_completed && (
-          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M2 6l3 3 5-5" />
-          </svg>
+      {/* Checkbox with pop animation */}
+      <div className="relative flex-shrink-0 w-5 h-5 flex items-center justify-center">
+        {/* Ripple ring */}
+        {popping && (
+          <span className="absolute inset-0 rounded-full border-2 border-[#1a1a1a] animate-[ripple_0.5s_ease-out_forwards]" />
         )}
-      </button>
+        <button
+          onClick={handleComplete}
+          disabled={task.is_completed}
+          className={`relative w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+            task.is_completed
+              ? "bg-[#1a1a1a] border-[#1a1a1a]"
+              : popping
+                ? "bg-[#1a1a1a] border-[#1a1a1a] scale-125"
+                : "border-[#aaa] hover:border-[#777] hover:scale-110 active:scale-90"
+          }`}
+          style={
+            popping
+              ? {
+                  animation: "checkPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+                }
+              : undefined
+          }
+        >
+          {(task.is_completed || popping) && (
+            <svg
+              className="w-2.5 h-2.5 text-white"
+              viewBox="0 0 12 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              style={
+                popping
+                  ? {
+                      animation: "checkDraw 0.3s ease-out 0.1s both",
+                    }
+                  : undefined
+              }
+            >
+              <path d="M2 6l3 3 5-5" strokeDasharray="12" strokeDashoffset={popping ? undefined : "0"} />
+            </svg>
+          )}
+        </button>
+      </div>
 
       {editing ? (
         <input
@@ -115,7 +154,7 @@ export default function TaskItem({
               className="text-xs text-[#aaa] hover:text-[#1a1a1a] transition-colors px-1"
               title="Edit"
             >
-              ✎
+              &#x270E;
             </button>
           )}
           {actions}

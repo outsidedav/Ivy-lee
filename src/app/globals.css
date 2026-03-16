@@ -23,7 +23,7 @@ body {
 }
 
 input::placeholder {
-  color: #ccc;
+  color: #aaa;
 }
 
 @keyframes fade-in {
@@ -33,4 +33,26 @@ input::placeholder {
 
 .animate-fade-in {
   animation: fade-in 0.2s ease-out;
+}
+
+/* Checkbox pop animation */
+@keyframes checkPop {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.85); }
+  50% { transform: scale(1.3); }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); background: #1a1a1a; border-color: #1a1a1a; }
+}
+
+/* Checkmark draw-in */
+@keyframes checkDraw {
+  0% { stroke-dashoffset: 12; opacity: 0; }
+  30% { opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+
+/* Ripple ring expanding outward */
+@keyframes ripple {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
 }
