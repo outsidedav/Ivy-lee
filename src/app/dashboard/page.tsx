@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import {
   DragDropContext,
   Droppable,
@@ -14,6 +15,10 @@ import CoffeeBreakButton from "@/components/CoffeeBreakButton";
 import BacklogPanel from "@/components/BacklogPanel";
 import OverflowMenu from "@/components/OverflowMenu";
 import HeaderMenu from "@/components/HeaderMenu";
+
+const LoadingAnimation = dynamic(() => import("@/components/LoadingAnimation"), {
+  ssr: false,
+});
 
 interface Task {
   id: string;
@@ -49,6 +54,7 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState(0);
   const [maxTasks, setMaxTasks] = useState(6);
   const [loading, setLoading] = useState(true);
+  const [showLoading, setShowLoading] = useState(false);
 
   const fetchAll = useCallback(async () => {
     // Auto-promote past tasks to today on load
@@ -151,6 +157,10 @@ export default function DashboardPage() {
     }
     if (!confirm("Move all tomorrow's tasks to today?")) return;
 
+    // Show cassette loading animation
+    setShowLoading(true);
+    const loadingStart = Date.now();
+
     // Move each task sequentially to preserve priority ordering
     // Sort by priority first so they get correct new priorities
     const sorted = [...incomplete].sort((a, b) => a.priority - b.priority);
@@ -176,7 +186,14 @@ export default function DashboardPage() {
       body: JSON.stringify({ orderedIds: [...existingTodayIds, ...reorderIds] }),
     });
 
-    fetchAll();
+    await fetchAll();
+
+    // Ensure animation shows for at least 1.5s
+    const elapsed = Date.now() - loadingStart;
+    if (elapsed < 1500) {
+      await new Promise((r) => setTimeout(r, 1500 - elapsed));
+    }
+    setShowLoading(false);
   }
 
   async function deleteTask(id: string) {
@@ -387,11 +404,13 @@ export default function DashboardPage() {
               <TaskItem key={task.id} task={task} onComplete={() => {}} />
             ))}
 
-            {todayTasks.length === 0 && tomorrowTasks.length === 0 && backlogTasks.length === 0 && (
+            {tomorrowTasks.length === 0 && backlogTasks.length === 0 && (
               <>
-                <p className="text-sm text-[#aaa] py-4">
-                  No tasks yet. Add your first tasks for today.
-                </p>
+                {todayTasks.length === 0 && (
+                  <p className="text-sm text-[#aaa] py-4">
+                    No tasks yet. Add your first tasks for today.
+                  </p>
+                )}
                 <AddTaskForm
                   onAdd={(title) => addTask(title, today)}
                   taskCount={todayTasks.length}
@@ -500,6 +519,8 @@ export default function DashboardPage() {
           <CoffeeBreakButton balance={balance} onRedeem={redeemCoffee} />
         </div>
       </main>
+
+      {showLoading && <LoadingAnimation onClose={() => setShowLoading(false)} />}
     </div>
   );
 }

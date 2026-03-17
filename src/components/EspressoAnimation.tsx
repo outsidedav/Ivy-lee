@@ -34,6 +34,9 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
       const WIND_DOWN_MS = 2500; // 2.5 seconds to wind down
       let cremaRipple = 0;
       const AUTO_CLOSE_MS = 5 * 60 * 1000;
+      let easterEggAlpha = 0;
+      let easterEggTimer = 0;
+      let showEasterEgg = false;
 
       // Colors — Rams palette
       const BODY_LIGHT = "#E8E4E0";
@@ -147,6 +150,32 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
           p.text("TAP TO PULL A SHOT", w / 2, h - 40 * scale);
         }
         p.pop();
+
+        // Easter egg text
+        if (showEasterEgg) {
+          easterEggTimer++;
+          if (easterEggTimer < 20) {
+            easterEggAlpha = Math.min(easterEggAlpha + 15, 255);
+          } else if (easterEggTimer > 140) {
+            easterEggAlpha = Math.max(easterEggAlpha - 8, 0);
+            if (easterEggAlpha <= 0) {
+              showEasterEgg = false;
+              easterEggTimer = 0;
+            }
+          }
+          p.push();
+          p.fill(100, 100, 100, easterEggAlpha);
+          p.noStroke();
+          p.textAlign(p.CENTER);
+          p.textSize(11 * scale);
+          p.textStyle(p.ITALIC);
+          p.text(
+            "Designed by a heavily caffeinated Googler named Davon",
+            w / 2,
+            h - 16 * scale
+          );
+          p.pop();
+        }
 
         // Close button — top right
         p.push();
@@ -489,6 +518,22 @@ export default function EspressoAnimation({ onClose }: EspressoAnimationProps) {
           p.mouseY < by + 15
         ) {
           onClose();
+          return;
+        }
+
+        // Easter egg hit test — "RAMS" text area
+        // RAMS is drawn at (-130, -120) in machine coords, translated by (w/2, h*0.42) and scaled
+        const ramsX = w / 2 + -130 * (w / 500);
+        const ramsY = p.height * 0.42 + -120 * (w / 500);
+        if (
+          p.mouseX > ramsX - 5 &&
+          p.mouseX < ramsX + 60 * (w / 500) &&
+          p.mouseY > ramsY - 15 * (w / 500) &&
+          p.mouseY < ramsY + 5 * (w / 500)
+        ) {
+          showEasterEgg = true;
+          easterEggAlpha = 0;
+          easterEggTimer = 0;
           return;
         }
 
