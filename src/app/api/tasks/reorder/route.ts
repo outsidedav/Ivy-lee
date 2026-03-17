@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { orderedIds } = body;
 
-  if (!Array.isArray(orderedIds) || orderedIds.length === 0 || orderedIds.length > 6) {
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0 || orderedIds.length > 10) {
     return NextResponse.json({ error: "Invalid orderedIds" }, { status: 400 });
   }
 

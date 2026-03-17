@@ -51,6 +51,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
+    // Auto-promote past tasks to today on load
+    await fetch("/api/tasks/promote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ today }),
+    });
+
     const [todayRes, tomorrowRes, backlogRes, rewardsRes, settingsRes] =
       await Promise.all([
         fetch(`/api/tasks?date=${today}`),
@@ -143,15 +150,32 @@ export default function DashboardPage() {
       return;
     }
     if (!confirm("Move all tomorrow's tasks to today?")) return;
-    await Promise.all(
-      incomplete.map((t) =>
-        fetch(`/api/tasks/${t.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ target_date: today }),
-        })
-      )
-    );
+
+    // Move each task sequentially to preserve priority ordering
+    // Sort by priority first so they get correct new priorities
+    const sorted = [...incomplete].sort((a, b) => a.priority - b.priority);
+    for (const t of sorted) {
+      await fetch(`/api/tasks/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_date: today }),
+      });
+    }
+
+    // Now reorder to preserve original priority values
+    const reorderIds = sorted.map((t) => t.id);
+    // Also include existing today tasks first
+    const existingTodayIds = todayTasks
+      .filter((t) => !t.is_completed)
+      .sort((a, b) => a.priority - b.priority)
+      .map((t) => t.id);
+
+    await fetch("/api/tasks/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderedIds: [...existingTodayIds, ...reorderIds] }),
+    });
+
     fetchAll();
   }
 
@@ -363,7 +387,20 @@ export default function DashboardPage() {
               <TaskItem key={task.id} task={task} onComplete={() => {}} />
             ))}
 
-            {todayTasks.length === 0 && (
+            {todayTasks.length === 0 && tomorrowTasks.length === 0 && backlogTasks.length === 0 && (
+              <>
+                <p className="text-sm text-[#aaa] py-4">
+                  No tasks yet. Add your first tasks for today.
+                </p>
+                <AddTaskForm
+                  onAdd={(title) => addTask(title, today)}
+                  taskCount={todayTasks.length}
+                  maxTasks={maxTasks}
+                  label="ADD"
+                />
+              </>
+            )}
+            {todayTasks.length === 0 && (tomorrowTasks.length > 0 || backlogTasks.length > 0) && (
               <p className="text-sm text-[#aaa] py-4">
                 No tasks for today. Add tomorrow&apos;s tasks below.
               </p>
