@@ -40,11 +40,11 @@ export default function FlipClockTimer({ onClose }: FlipClockTimerProps) {
       const DIGIT_WHITE = "#F0F0F0";
 
       // Layout constants (in 500-unit space)
-      const CLOCK_W = 340;
+      const CLOCK_W = 380;
       const CLOCK_H = 180;
-      const DISPLAY_X = -145;
+      const DISPLAY_X = -160;
       const DISPLAY_Y = -55;
-      const DISPLAY_W = 250;
+      const DISPLAY_W = 280;
       const DISPLAY_H = 110;
       const DIGIT_W = 52;
       const DIGIT_H = 80;
@@ -415,10 +415,10 @@ export default function FlipClockTimer({ onClose }: FlipClockTimerProps) {
           const gap = 8;
 
           const buttons = [
-            { label: "−1h", x: -btnW * 2 - gap * 1.5, delta: -3600 },
+            { label: "−10m", x: -btnW * 2 - gap * 1.5, delta: -600 },
             { label: "−1m", x: -btnW - gap * 0.5, delta: -60 },
             { label: "+1m", x: gap * 0.5, delta: 60 },
-            { label: "+1h", x: btnW + gap * 1.5, delta: 3600 },
+            { label: "+10m", x: btnW + gap * 1.5, delta: 600 },
           ];
 
           for (const btn of buttons) {
@@ -503,10 +503,10 @@ export default function FlipClockTimer({ onClose }: FlipClockTimerProps) {
           const gap = 8;
 
           const buttons = [
-            { x: -btnW * 2 - gap * 1.5, delta: -3600 },
+            { x: -btnW * 2 - gap * 1.5, delta: -600 },
             { x: -btnW - gap * 0.5, delta: -60 },
             { x: gap * 0.5, delta: 60 },
-            { x: btnW + gap * 1.5, delta: 3600 },
+            { x: btnW + gap * 1.5, delta: 600 },
           ];
 
           for (const btn of buttons) {
@@ -517,7 +517,7 @@ export default function FlipClockTimer({ onClose }: FlipClockTimerProps) {
               my < btnY + btnH
             ) {
               const newTotal = totalSeconds + btn.delta;
-              if (newTotal >= 60 && newTotal <= 5999) {
+              if (newTotal >= 60 && newTotal <= 3540) {
                 // Trigger flip animations for changing digits
                 const oldDigits = getDigits(totalSeconds);
                 totalSeconds = newTotal;
