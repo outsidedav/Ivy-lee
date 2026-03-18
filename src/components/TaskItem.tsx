@@ -15,6 +15,7 @@ interface TaskItemProps {
   task: Task;
   onComplete: (id: string) => void;
   onEdit?: (id: string, title: string) => void;
+  onStartTimer?: (id: string) => void;
   showDragHandle?: boolean;
   actions?: React.ReactNode;
 }
@@ -23,6 +24,7 @@ export default function TaskItem({
   task,
   onComplete,
   onEdit,
+  onStartTimer,
   showDragHandle = false,
   actions,
 }: TaskItemProps) {
@@ -149,6 +151,15 @@ export default function TaskItem({
 
       {!task.is_completed && (
         <div className="opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity flex gap-1">
+          {onStartTimer && !editing && (
+            <button
+              onClick={() => onStartTimer(task.id)}
+              className="text-xs text-[#aaa] hover:text-[#1a1a1a] transition-colors px-1"
+              title="Timer"
+            >
+              ⏱
+            </button>
+          )}
           {onEdit && !editing && (
             <button
               onClick={() => setEditing(true)}

@@ -20,6 +20,10 @@ const LoadingAnimation = dynamic(() => import("@/components/LoadingAnimation"), 
   ssr: false,
 });
 
+const FlipClockTimer = dynamic(() => import("@/components/FlipClockTimer"), {
+  ssr: false,
+});
+
 interface Task {
   id: string;
   title: string;
@@ -55,6 +59,7 @@ export default function DashboardPage() {
   const [maxTasks, setMaxTasks] = useState(6);
   const [loading, setLoading] = useState(true);
   const [showLoading, setShowLoading] = useState(false);
+  const [timerTaskId, setTimerTaskId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     // Auto-promote past tasks to today on load
@@ -388,6 +393,7 @@ export default function DashboardPage() {
                             task={task}
                             onComplete={completeTask}
                             onEdit={editTask}
+                            onStartTimer={(id) => setTimerTaskId(id)}
                             showDragHandle
                           />
                         </div>
@@ -477,6 +483,7 @@ export default function DashboardPage() {
                             task={task}
                             onComplete={completeTask}
                             onEdit={editTask}
+                            onStartTimer={(id) => setTimerTaskId(id)}
                             showDragHandle
                             actions={
                               <button
@@ -521,6 +528,7 @@ export default function DashboardPage() {
       </main>
 
       {showLoading && <LoadingAnimation onClose={() => setShowLoading(false)} />}
+      {timerTaskId && <FlipClockTimer onClose={() => setTimerTaskId(null)} />}
     </div>
   );
 }
