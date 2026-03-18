@@ -528,7 +528,14 @@ export default function DashboardPage() {
       </main>
 
       {showLoading && <LoadingAnimation onClose={() => setShowLoading(false)} />}
-      {timerTaskId && <FlipClockTimer onClose={() => setTimerTaskId(null)} />}
+      {timerTaskId && (
+        <FlipClockTimer
+          onClose={() => setTimerTaskId(null)}
+          taskTitle={
+            [...todayTasks, ...tomorrowTasks].find((t) => t.id === timerTaskId)?.title
+          }
+        />
+      )}
     </div>
   );
 }

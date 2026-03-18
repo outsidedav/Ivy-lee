@@ -5,9 +5,10 @@ import type p5Type from "p5";
 
 interface FlipClockTimerProps {
   onClose: () => void;
+  taskTitle?: string;
 }
 
-export default function FlipClockTimer({ onClose }: FlipClockTimerProps) {
+export default function FlipClockTimer({ onClose, taskTitle }: FlipClockTimerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const p5Ref = useRef<p5Type | null>(null);
 
@@ -112,7 +113,6 @@ export default function FlipClockTimer({ onClose }: FlipClockTimerProps) {
 
         drawClockBody(p);
         drawDisplay(p);
-        drawSideDial(p);
 
         p.pop();
 
@@ -138,6 +138,23 @@ export default function FlipClockTimer({ onClose }: FlipClockTimerProps) {
           p.text("Focus.", w / 2, h - 36 * scale);
         }
         p.pop();
+
+        // Task title at top
+        if (taskTitle) {
+          p.push();
+          p.fill(100);
+          p.noStroke();
+          p.textAlign(p.CENTER);
+          p.textSize(13 * scale);
+          p.textStyle(p.NORMAL);
+          const maxTitleW = w * 0.7;
+          const truncated =
+            p.textWidth(taskTitle) > maxTitleW
+              ? taskTitle.slice(0, Math.floor(taskTitle.length * (maxTitleW / p.textWidth(taskTitle)))) + "…"
+              : taskTitle;
+          p.text(truncated, w / 2, 36 * scale);
+          p.pop();
+        }
 
         // Close button — top right
         p.push();
@@ -369,43 +386,6 @@ export default function FlipClockTimer({ onClose }: FlipClockTimerProps) {
         p.pop();
       }
 
-      function drawSideDial(p: p5Type) {
-        const dx = DISPLAY_X + DISPLAY_W + 12;
-        const dy = DISPLAY_Y + 5;
-        const dw = 28;
-        const dh = DISPLAY_H - 10;
-
-        // Dial background
-        p.fill(DARK);
-        p.rect(dx, dy, dw, dh, 3);
-
-        // Scale marks
-        p.fill(DIGIT_WHITE);
-        p.textAlign(p.RIGHT);
-        p.textSize(6);
-        for (let i = 0; i <= 5; i++) {
-          const markY = dy + 10 + i * ((dh - 20) / 5);
-          p.stroke(80);
-          p.strokeWeight(0.5);
-          p.line(dx + 4, markY, dx + 12, markY);
-          p.noStroke();
-          p.text(String(18 - i), dx + dw - 4, markY + 2);
-        }
-
-        // Indicator line (orange accent)
-        const indicatorY = dy + dh * 0.3;
-        p.stroke(ACCENT_ORANGE);
-        p.strokeWeight(1.5);
-        p.line(dx + 3, indicatorY, dx + 14, indicatorY);
-        p.noStroke();
-
-        // Knob on right
-        p.fill(DARK);
-        p.ellipse(dx + dw + 8, dy + dh / 2, 16, 20);
-        p.fill(50);
-        p.ellipse(dx + dw + 8, dy + dh / 2 - 2, 6, 6);
-      }
-
       function drawControls(p: p5Type) {
         if (timerState === "setup") {
           // Time adjustment buttons
@@ -592,7 +572,7 @@ export default function FlipClockTimer({ onClose }: FlipClockTimerProps) {
         p.resizeCanvas(w, h);
       };
     },
-    [onClose]
+    [onClose, taskTitle]
   );
 
   useEffect(() => {
