@@ -113,6 +113,7 @@ export default function FlipClockTimer({ onClose, taskTitle }: FlipClockTimerPro
 
         drawClockBody(p);
         drawDisplay(p);
+        drawSideDial(p);
 
         p.pop();
 
@@ -384,6 +385,37 @@ export default function FlipClockTimer({ onClose, taskTitle }: FlipClockTimerPro
         p.text(digitStr, x + w / 2, fullCenterY);
         ctx.restore();
         p.pop();
+      }
+
+      function drawSideDial(p: p5Type) {
+        const dx = DISPLAY_X + DISPLAY_W + 12;
+        const dy = DISPLAY_Y + 5;
+        const dw = 28;
+        const dh = DISPLAY_H - 10;
+
+        // Dial background
+        p.fill(DARK);
+        p.rect(dx, dy, dw, dh, 3);
+
+        // Scale marks
+        p.fill(DIGIT_WHITE);
+        p.textAlign(p.RIGHT);
+        p.textSize(6);
+        for (let i = 0; i <= 5; i++) {
+          const markY = dy + 10 + i * ((dh - 20) / 5);
+          p.stroke(80);
+          p.strokeWeight(0.5);
+          p.line(dx + 4, markY, dx + 12, markY);
+          p.noStroke();
+          p.text(String(18 - i), dx + dw - 4, markY + 2);
+        }
+
+        // Indicator line (orange accent)
+        const indicatorY = dy + dh * 0.3;
+        p.stroke(ACCENT_ORANGE);
+        p.strokeWeight(1.5);
+        p.line(dx + 3, indicatorY, dx + 14, indicatorY);
+        p.noStroke();
       }
 
       function drawControls(p: p5Type) {
