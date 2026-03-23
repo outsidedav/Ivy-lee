@@ -49,8 +49,20 @@ function formatDate(dateStr: string): string {
 }
 
 export default function DashboardPage() {
-  const today = getLocalDate(0);
-  const tomorrow = getLocalDate(1);
+  const [today, setToday] = useState(getLocalDate(0));
+  const [tomorrow, setTomorrow] = useState(getLocalDate(1));
+
+  // Check for date change (midnight rollover) every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentToday = getLocalDate(0);
+      if (currentToday !== today) {
+        setToday(currentToday);
+        setTomorrow(getLocalDate(1));
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [today]);
 
   const [todayTasks, setTodayTasks] = useState<Task[]>([]);
   const [tomorrowTasks, setTomorrowTasks] = useState<Task[]>([]);

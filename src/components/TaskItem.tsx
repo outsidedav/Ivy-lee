@@ -150,11 +150,11 @@ export default function TaskItem({
       )}
 
       {!task.is_completed && (
-        <div className="opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity flex gap-1">
+        <div className="opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity flex gap-1 sm:gap-1 gap-2">
           {onStartTimer && !editing && (
             <button
               onClick={() => onStartTimer(task.id)}
-              className="text-xs text-[#aaa] hover:text-[#1a1a1a] transition-colors px-1"
+              className="text-[#aaa] hover:text-[#1a1a1a] transition-colors px-1 text-base sm:text-xs min-w-[28px] sm:min-w-0 min-h-[28px] sm:min-h-0 flex items-center justify-center"
               title="Timer"
             >
               ⏱
@@ -163,7 +163,7 @@ export default function TaskItem({
           {onEdit && !editing && (
             <button
               onClick={() => setEditing(true)}
-              className="text-xs text-[#aaa] hover:text-[#1a1a1a] transition-colors px-1"
+              className="text-[#aaa] hover:text-[#1a1a1a] transition-colors px-1 text-base sm:text-xs min-w-[28px] sm:min-w-0 min-h-[28px] sm:min-h-0 flex items-center justify-center"
               title="Edit"
             >
               &#x270E;
@@ -174,7 +174,7 @@ export default function TaskItem({
       )}
 
       {task.is_completed && actions && (
-        <div className="opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity flex gap-1">
+        <div className="opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-opacity flex gap-2 sm:gap-1">
           {actions}
         </div>
       )}
