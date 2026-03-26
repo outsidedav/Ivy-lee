@@ -69,6 +69,7 @@ export default function DashboardPage() {
   const [backlogTasks, setBacklogTasks] = useState<Task[]>([]);
   const [balance, setBalance] = useState(0);
   const [maxTasks, setMaxTasks] = useState(6);
+  const [allowTodayAdd, setAllowTodayAdd] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showLoading, setShowLoading] = useState(false);
   const [timerTaskId, setTimerTaskId] = useState<string | null>(null);
@@ -104,6 +105,7 @@ export default function DashboardPage() {
     setBacklogTasks(Array.isArray(backlogData) ? backlogData : []);
     setBalance(rewardsData.balance ?? 0);
     setMaxTasks(settingsData.max_tasks_per_day ?? 6);
+    setAllowTodayAdd(settingsData.allow_today_add ?? false);
     setLoading(false);
   }, [today, tomorrow]);
 
@@ -333,11 +335,7 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fafafa]">
-        <span className="text-sm text-[#999]">Loading...</span>
-      </div>
-    );
+    return <LoadingAnimation onClose={() => {}} />;
   }
 
   const todayIncomplete = todayTasks.filter((t) => !t.is_completed);
@@ -422,24 +420,19 @@ export default function DashboardPage() {
               <TaskItem key={task.id} task={task} onComplete={() => {}} />
             ))}
 
-            {tomorrowTasks.length === 0 && backlogTasks.length === 0 && (
-              <>
-                {todayTasks.length === 0 && (
-                  <p className="text-sm text-[#aaa] py-4">
-                    No tasks yet. Add your first tasks for today.
-                  </p>
-                )}
-                <AddTaskForm
-                  onAdd={(title) => addTask(title, today)}
-                  taskCount={todayTasks.length}
-                  maxTasks={maxTasks}
-                  label="ADD"
-                />
-              </>
+            {allowTodayAdd && (
+              <AddTaskForm
+                onAdd={(title) => addTask(title, today)}
+                taskCount={todayTasks.length}
+                maxTasks={maxTasks}
+                label="ADD"
+              />
             )}
-            {todayTasks.length === 0 && (tomorrowTasks.length > 0 || backlogTasks.length > 0) && (
+            {todayTasks.length === 0 && (
               <p className="text-sm text-[#aaa] py-4">
-                No tasks for today. Add tomorrow&apos;s tasks below.
+                {allowTodayAdd
+                  ? "No tasks for today yet."
+                  : "No tasks for today. Add tomorrow\u2019s tasks below."}
               </p>
             )}
           </section>

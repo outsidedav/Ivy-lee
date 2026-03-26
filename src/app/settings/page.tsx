@@ -6,6 +6,7 @@ import Link from "next/link";
 
 export default function SettingsPage() {
   const [maxTasks, setMaxTasks] = useState(6);
+  const [allowTodayAdd, setAllowTodayAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -16,6 +17,7 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((data) => {
         setMaxTasks(data.max_tasks_per_day ?? 6);
+        setAllowTodayAdd(data.allow_today_add ?? false);
         setLoading(false);
       });
   }, []);
@@ -93,6 +95,39 @@ export default function SettingsPage() {
           {saving && (
             <p className="text-xs text-[#999] mt-2">Saving...</p>
           )}
+        </section>
+
+        {/* Allow adding to Today */}
+        <section>
+          <h2 className="text-xs font-medium tracking-widest uppercase text-[#999] mb-4">
+            Add tasks to Today
+          </h2>
+          <p className="text-sm text-[#666] mb-4">
+            The Ivy Lee method recommends only planning tomorrow&apos;s tasks. Enable
+            this to also add tasks directly to today.
+          </p>
+          <button
+            onClick={async () => {
+              const newValue = !allowTodayAdd;
+              setAllowTodayAdd(newValue);
+              setSaving(true);
+              await fetch("/api/settings", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ allow_today_add: newValue }),
+              });
+              setSaving(false);
+            }}
+            className={`relative w-10 h-5 rounded-full transition-colors ${
+              allowTodayAdd ? "bg-[#1a1a1a]" : "bg-[#ddd]"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                allowTodayAdd ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
         </section>
 
         {/* Completed tasks link */}
