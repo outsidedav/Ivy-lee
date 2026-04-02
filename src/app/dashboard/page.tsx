@@ -311,13 +311,13 @@ export default function DashboardPage() {
       setSourceTasks([...updatedSource, ...sourceCompleted]);
       setDestTasks([...updatedDest, ...destCompleted]);
 
-      // Persist: move task to new date, then reorder both lists
+      // Persist: move task to new date FIRST, then reorder both lists
+      await fetch(`/api/tasks/${moved.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_date: destDate }),
+      });
       await Promise.all([
-        fetch(`/api/tasks/${moved.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ target_date: destDate }),
-        }),
         fetch("/api/tasks/reorder", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
