@@ -9,6 +9,7 @@ interface Task {
   is_completed: boolean;
   target_date: string;
   completed_at: string | null;
+  link_url?: string | null;
 }
 
 interface TaskItemProps {
@@ -147,6 +148,23 @@ export default function TaskItem({
         >
           {task.title}
         </span>
+      )}
+
+      {/* Link icon — always visible when a URL is attached */}
+      {task.link_url && !editing && (
+        <a
+          href={task.link_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          title={task.link_url}
+          className="flex-shrink-0 text-[#ccc] hover:text-[#1a1a1a] transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6.5 9.5a4 4 0 005.66 0l2-2a4 4 0 00-5.66-5.66l-1 1" />
+            <path d="M9.5 6.5a4 4 0 00-5.66 0l-2 2a4 4 0 005.66 5.66l1-1" />
+          </svg>
+        </a>
       )}
 
       {!task.is_completed && (

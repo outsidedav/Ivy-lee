@@ -31,6 +31,7 @@ interface Task {
   is_completed: boolean;
   target_date: string;
   completed_at: string | null;
+  link_url?: string | null;
 }
 
 function getLocalDate(offset = 0): string {
@@ -75,8 +76,13 @@ export default function DashboardPage() {
   const [timerTaskId, setTimerTaskId] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
-    // Auto-promote past tasks to today on load
+    // Auto-promote past tasks to today, then trim any overflow back to tomorrow
     await fetch("/api/tasks/promote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ today }),
+    });
+    await fetch("/api/tasks/trim-today", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ today }),
@@ -113,7 +119,7 @@ export default function DashboardPage() {
     fetchAll();
   }, [fetchAll]);
 
-  async function addTask(title: string, targetDate: string) {
+  async function addTask(title: string, targetDate: string, linkUrl?: string) {
     // Optimistic update — show the task immediately
     const tempId = `temp-${Date.now()}`;
     const setTasks = targetDate === today ? setTodayTasks : setTomorrowTasks;
@@ -125,6 +131,7 @@ export default function DashboardPage() {
       is_completed: false,
       target_date: targetDate,
       completed_at: null,
+      link_url: linkUrl || null,
     };
     setTasks((prev) => [...prev, optimisticTask]);
 
@@ -132,7 +139,7 @@ export default function DashboardPage() {
     await fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, target_date: targetDate }),
+      body: JSON.stringify({ title, target_date: targetDate, link_url: linkUrl || undefined }),
     });
     fetchAll();
   }
@@ -168,22 +175,23 @@ export default function DashboardPage() {
   async function moveTomorrowToToday() {
     const incomplete = tomorrowTasks.filter((t) => !t.is_completed);
     if (incomplete.length === 0) return;
-    if (todayTasks.length + incomplete.length > maxTasks) {
-      alert(
-        `Can't move ${incomplete.length} tasks — today already has ${todayTasks.length} (max ${maxTasks}).`
-      );
-      return;
-    }
-    if (!confirm("Move all tomorrow's tasks to today?")) return;
+
+    const todayIncompleteCount = todayTasks.filter((t) => !t.is_completed).length;
+    const slotsAvailable = Math.max(0, maxTasks - todayIncompleteCount);
+    if (slotsAvailable === 0) return;
+
+    if (!confirm("Move tomorrow's top-priority tasks to today?")) return;
 
     // Show cassette loading animation
     setShowLoading(true);
     const loadingStart = Date.now();
 
-    // Move each task sequentially to preserve priority ordering
-    // Sort by priority first so they get correct new priorities
+    // Sort by priority and only move as many as fit
     const sorted = [...incomplete].sort((a, b) => a.priority - b.priority);
-    for (const t of sorted) {
+    const toMove = sorted.slice(0, slotsAvailable);
+
+    // Move each task sequentially to preserve priority ordering
+    for (const t of toMove) {
       await fetch(`/api/tasks/${t.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -191,9 +199,7 @@ export default function DashboardPage() {
       });
     }
 
-    // Now reorder to preserve original priority values
-    const reorderIds = sorted.map((t) => t.id);
-    // Also include existing today tasks first
+    // Reorder: existing today tasks first, then newly moved tasks
     const existingTodayIds = todayTasks
       .filter((t) => !t.is_completed)
       .sort((a, b) => a.priority - b.priority)
@@ -202,7 +208,7 @@ export default function DashboardPage() {
     await fetch("/api/tasks/reorder", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderedIds: [...existingTodayIds, ...reorderIds] }),
+      body: JSON.stringify({ orderedIds: [...existingTodayIds, ...toMove.map((t) => t.id)] }),
     });
 
     await fetchAll();
@@ -285,8 +291,9 @@ export default function DashboardPage() {
       const destIncomplete = destTasks.filter((t) => !t.is_completed);
       const destCompleted = destTasks.filter((t) => t.is_completed);
 
-      if (destIncomplete.length >= maxTasks) {
-        alert(`That list already has ${maxTasks} tasks.`);
+      // Only enforce maxTasks when the destination is Today; Tomorrow is unlimited
+      if (destList === "today-tasks" && destIncomplete.length >= maxTasks) {
+        alert(`Today already has ${maxTasks} tasks.`);
         return;
       }
 
@@ -422,7 +429,7 @@ export default function DashboardPage() {
 
             {allowTodayAdd && (
               <AddTaskForm
-                onAdd={(title) => addTask(title, today)}
+                onAdd={(title, linkUrl) => addTask(title, today, linkUrl)}
                 taskCount={todayTasks.length}
                 maxTasks={maxTasks}
                 label="ADD"
@@ -509,9 +516,9 @@ export default function DashboardPage() {
             </Droppable>
 
             <AddTaskForm
-              onAdd={(title) => addTask(title, tomorrow)}
+              onAdd={(title, linkUrl) => addTask(title, tomorrow, linkUrl)}
               taskCount={tomorrowTasks.length}
-              maxTasks={maxTasks}
+              maxTasks={0}
               label="ADD"
             />
           </section>

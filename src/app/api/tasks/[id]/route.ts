@@ -3,6 +3,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { pointsForPriority } from "@/lib/points";
+import { encryptTitle, encryptLinkUrl, decryptTitle, decryptLinkUrl } from "@/lib/encryption";
+
+function decryptTask(task: Record<string, unknown>, userId: string) {
+  return {
+    ...task,
+    title: decryptTitle(task.title as string, userId),
+    link_url: task.link_url
+      ? decryptLinkUrl(task.link_url as string, userId)
+      : task.link_url,
+  };
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -52,7 +63,7 @@ export async function PATCH(
       task_id: id,
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json(decryptTask(data, session.user.id));
   }
 
   // Handle un-complete (return task)
@@ -109,7 +120,7 @@ export async function PATCH(
       task_id: id,
     });
 
-    return NextResponse.json(data);
+    return NextResponse.json(decryptTask(data, session.user.id));
   }
 
   // Handle title edit
@@ -121,7 +132,7 @@ export async function PATCH(
 
     const { data, error } = await supabase
       .from("tasks")
-      .update({ title })
+      .update({ title: encryptTitle(title, session.user.id) })
       .eq("id", id)
       .eq("user_id", session.user.id)
       .select()
@@ -131,7 +142,29 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({ ...data, title });
+  }
+
+  // Handle link_url update
+  if ("link_url" in body) {
+    const url = body.link_url ? String(body.link_url).trim() : null;
+    if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
+      return NextResponse.json({ error: "link_url must start with http or https" }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from("tasks")
+      .update({ link_url: url ? encryptLinkUrl(url, session.user.id) : null })
+      .eq("id", id)
+      .eq("user_id", session.user.id)
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ...decryptTask(data, session.user.id), link_url: url });
   }
 
   // Handle priority update
@@ -153,30 +186,33 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(decryptTask(data, session.user.id));
   }
 
   // Handle moving to another date (for backlog items or cross-list drag)
   if (body.target_date) {
-    // Get user's max tasks setting
-    const { data: user } = await supabase
-      .from("users")
-      .select("max_tasks_per_day")
-      .eq("id", session.user.id)
-      .single();
-    const maxTasks = user?.max_tasks_per_day ?? 6;
-
     const { count } = await supabase
       .from("tasks")
       .select("*", { count: "exact", head: true })
       .eq("user_id", session.user.id)
       .eq("target_date", body.target_date);
 
-    if (count !== null && count >= maxTasks) {
-      return NextResponse.json(
-        { error: `That day already has ${maxTasks} tasks` },
-        { status: 400 }
-      );
+    // Only enforce maxTasks when the destination is today — tomorrow is an unlimited queue
+    const serverToday = new Date().toISOString().split("T")[0];
+    if (body.target_date === serverToday) {
+      const { data: user } = await supabase
+        .from("users")
+        .select("max_tasks_per_day")
+        .eq("id", session.user.id)
+        .single();
+      const maxTasks = user?.max_tasks_per_day ?? 6;
+
+      if (count !== null && count >= maxTasks) {
+        return NextResponse.json(
+          { error: `That day already has ${maxTasks} tasks` },
+          { status: 400 }
+        );
+      }
     }
 
     const newPriority = (count ?? 0) + 1;
@@ -192,7 +228,7 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(decryptTask(data, session.user.id));
   }
 
   return NextResponse.json({ error: "No valid update provided" }, { status: 400 });
